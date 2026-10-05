@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { ExamPaper, ExamSection, GeneratedSet } from './types';
 import { dsaExamPaper } from './data/samplePapers';
 import { RibbonToolbar } from './components/RibbonToolbar';
@@ -8,7 +8,8 @@ import { SectionBlock } from './components/SectionBlock';
 import { ShuffleMatrixModal } from './components/ShuffleMatrixModal';
 import { generateShuffledSets } from './utils/shuffle';
 import { downloadSetDocx } from './utils/docxExport';
-import { Plus, CheckCircle, Info } from 'lucide-react';
+import { downloadPaperAsPdf, printCleanPaper, getExamFilename } from './utils/pdfExport';
+import { Plus, CheckCircle2, Info, ArrowLeft } from 'lucide-react';
 
 export function App() {
   const [paper, setPaper] = useState<ExamPaper>(dsaExamPaper);
@@ -18,7 +19,10 @@ export function App() {
   const [shuffleOptions, setShuffleOptions] = useState<boolean>(true);
   const [isShuffleMatrixOpen, setIsShuffleMatrixOpen] = useState<boolean>(false);
   const [showCorrectAnswers, setShowCorrectAnswers] = useState<boolean>(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -30,21 +34,22 @@ export function App() {
   // Section operations on master paper
   const handleAddSection = () => {
     const newSecNum = paper.sections.length + 1;
+    const now = Date.now();
     const newSection: ExamSection = {
-      id: `sec-${Date.now()}`,
+      id: `sec-${now}`,
       title: `PART - ${String.fromCharCode(64 + newSecNum)}: New Section`,
       instructions: 'Answer all questions in this section.',
       questions: [
         {
-          id: `q-${Date.now()}`,
+          id: `q-${now}`,
           type: 'mcq',
           stem: 'Sample multiple choice question stem.',
           marks: 2,
           options: [
-            { id: `opt-1-${Date.now()}`, label: 'A', text: 'Option A statement', isCorrect: true },
-            { id: `opt-2-${Date.now()}`, label: 'B', text: 'Option B statement', isCorrect: false },
-            { id: `opt-3-${Date.now()}`, label: 'C', text: 'Option C statement', isCorrect: false },
-            { id: `opt-4-${Date.now()}`, label: 'D', text: 'Option D statement', isCorrect: false },
+            { id: `opt-1-${now}`, label: 'A', text: 'Option A statement', isCorrect: true },
+            { id: `opt-2-${now}`, label: 'B', text: 'Option B statement', isCorrect: false },
+            { id: `opt-3-${now}`, label: 'C', text: 'Option C statement', isCorrect: false },
+            { id: `opt-4-${now}`, label: 'D', text: 'Option D statement', isCorrect: false },
           ],
         },
       ],
@@ -94,18 +99,19 @@ export function App() {
     }
     const lastSectionIdx = paper.sections.length - 1;
     const lastSection = paper.sections[lastSectionIdx];
+    const now = Date.now();
     const newQ = {
-      id: `q-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      id: `q-${now}`,
       type,
       stem: type === 'mcq' ? 'New multiple choice question stem.' : 'New descriptive question stem.',
       marks: type === 'mcq' ? 2 : 5,
       options:
         type === 'mcq'
           ? [
-              { id: `opt-1-${Date.now()}`, label: 'A', text: 'Choice 1', isCorrect: true },
-              { id: `opt-2-${Date.now()}`, label: 'B', text: 'Choice 2', isCorrect: false },
-              { id: `opt-3-${Date.now()}`, label: 'C', text: 'Choice 3', isCorrect: false },
-              { id: `opt-4-${Date.now()}`, label: 'D', text: 'Choice 4', isCorrect: false },
+              { id: `opt-1-${now}`, label: 'A', text: 'Choice 1', isCorrect: true },
+              { id: `opt-2-${now}`, label: 'B', text: 'Choice 2', isCorrect: false },
+              { id: `opt-3-${now}`, label: 'C', text: 'Choice 3', isCorrect: false },
+              { id: `opt-4-${now}`, label: 'D', text: 'Choice 4', isCorrect: false },
             ]
           : undefined,
     };
@@ -129,11 +135,50 @@ export function App() {
     showToast(`Successfully generated ${setCount} unique shuffled sets (Set A to Set ${sets[sets.length - 1].setCode.split(' ')[1]})!`);
   };
 
-  // Export handlers
-  const handlePrintPdf = () => {
-    window.print();
+  // Active view: either master paper or a generated set
+  const currentPaper = activeSetIndex >= 0 && generatedSets[activeSetIndex]
+    ? generatedSets[activeSetIndex].paper
+    : paper;
+
+  const currentSetCode = activeSetIndex >= 0 && generatedSets[activeSetIndex]
+    ? generatedSets[activeSetIndex].setCode
+    : 'MASTER TEMPLATE';
+
+  const isReadOnly = activeSetIndex >= 0;
+
+  // Precalculate section question number offsets for pure consecutive numbering across sections
+  const sectionOffsets = currentPaper.sections.reduce<number[]>((acc, _sec, idx) => {
+    if (idx === 0) return [0];
+    const prevCount = acc[idx - 1] + currentPaper.sections[idx - 1].questions.length;
+    return [...acc, prevCount];
+  }, []);
+
+  // Direct clean PDF download (No watermarks, No localhost URL)
+  const handleDownloadPdf = async () => {
+    if (!canvasRef.current) return;
+    setIsGeneratingPdf(true);
+    showToast(`Generating clean A4 PDF for ${currentSetCode}...`);
+
+    try {
+      const filename = getExamFilename(currentPaper, currentSetCode, 'pdf');
+      await downloadPaperAsPdf(canvasRef.current, filename);
+      showToast(`Downloaded clean PDF: ${filename}`);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      showToast('Opening clean print preview...');
+      handlePrintPdf();
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
+  // Clean Browser Print / Save as PDF (Stripped headers & footers)
+  const handlePrintPdf = () => {
+    const cleanTitle = getExamFilename(currentPaper, currentSetCode, '').replace(/\.$/, '');
+    printCleanPaper(cleanTitle);
+  };
+
+  // Word (.docx) export
   const handleExportDocx = () => {
     if (activeSetIndex >= 0 && generatedSets[activeSetIndex]) {
       downloadSetDocx(generatedSets[activeSetIndex]);
@@ -149,22 +194,8 @@ export function App() {
     }
   };
 
-  // Active view: either master paper or a generated set
-  const currentPaper = activeSetIndex >= 0 && generatedSets[activeSetIndex]
-    ? generatedSets[activeSetIndex].paper
-    : paper;
-
-  const currentSetCode = activeSetIndex >= 0 && generatedSets[activeSetIndex]
-    ? generatedSets[activeSetIndex].setCode
-    : 'MASTER TEMPLATE';
-
-  const isReadOnly = activeSetIndex >= 0;
-
-  // Question numbering offset calculation for consecutive numbering across sections
-  let runningQuestionCount = 0;
-
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col font-sans text-gray-900">
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900 antialiased">
       {/* Top Ribbon & Format Toolbar */}
       <RibbonToolbar
         paper={paper}
@@ -178,11 +209,13 @@ export function App() {
         setSetCount={setSetCount}
         shuffleOptions={shuffleOptions}
         setShuffleOptions={setShuffleOptions}
+        onDownloadPdf={handleDownloadPdf}
         onPrintPdf={handlePrintPdf}
         onExportDocx={handleExportDocx}
+        isGeneratingPdf={isGeneratingPdf}
       />
 
-      {/* Set Tabs (when sets generated) */}
+      {/* Set Tabs (when sets are generated) */}
       <SetTabsBar
         sets={generatedSets}
         activeSetIndex={activeSetIndex}
@@ -191,29 +224,41 @@ export function App() {
         showCorrectAnswers={showCorrectAnswers}
         setShowCorrectAnswers={setShowCorrectAnswers}
         masterPaper={paper}
+        onDownloadCurrentSetPdf={handleDownloadPdf}
       />
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-bottom-3 duration-200 no-print">
-          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-bottom-3 duration-200 no-print border border-slate-700">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Read-Only Notice when viewing a Generated Set */}
       {isReadOnly && (
-        <div className="bg-blue-50 border-b border-blue-200 py-1.5 px-4 text-center text-xs text-blue-800 font-medium no-print flex items-center justify-center gap-1.5">
-          <Info className="w-3.5 h-3.5 text-blue-600" />
+        <div className="bg-blue-50/90 border-b border-blue-200 py-2 px-4 text-center text-xs text-blue-900 font-medium no-print flex items-center justify-center gap-2 shadow-2xs">
+          <Info className="w-4 h-4 text-blue-600 shrink-0" />
           <span>
-            Viewing <strong>{currentSetCode}</strong> (shuffled question permutation). To edit questions or section structures, switch back to <strong>Master Template</strong>.
+            Viewing permutation: <strong className="text-blue-950 font-bold">{currentSetCode}</strong>.
+            Questions and choices are shuffled according to Fisher–Yates.
           </span>
+          <button
+            type="button"
+            onClick={() => setActiveSetIndex(-1)}
+            className="ml-2 px-2.5 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[11px] font-bold flex items-center gap-1 transition-colors"
+          >
+            <ArrowLeft className="w-3 h-3" /> Back to Master Template
+          </button>
         </div>
       )}
 
       {/* Main Canvas Workspace */}
       <main className="flex-1 py-8 px-2 sm:px-4 md:px-8 overflow-y-auto">
-        <div className="a4-canvas-container a4-page">
+        <div
+          ref={canvasRef}
+          className="a4-canvas-container a4-page"
+        >
           {/* Header & Exam Metadata */}
           <HeaderEditor
             header={currentPaper.header}
@@ -224,8 +269,7 @@ export function App() {
 
           {/* Sections List */}
           {currentPaper.sections.map((section, sIdx) => {
-            const offset = runningQuestionCount;
-            runningQuestionCount += section.questions.length;
+            const offset = sectionOffsets[sIdx] || 0;
 
             return (
               <SectionBlock
@@ -247,19 +291,19 @@ export function App() {
 
           {/* Canvas Bottom Action: Add Section */}
           {!isReadOnly && (
-            <div className="text-center pt-4 pb-2 border-t border-dashed border-gray-300 no-print">
+            <div className="text-center pt-5 pb-3 border-t border-dashed border-slate-300 no-print">
               <button
                 type="button"
                 onClick={handleAddSection}
-                className="px-4 py-2 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 rounded-lg text-xs font-bold inline-flex items-center gap-2 shadow-xs transition-colors"
+                className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold inline-flex items-center gap-2 shadow-2xs hover:shadow-xs transition-all"
               >
-                <Plus className="w-4 h-4 text-blue-600" /> Add Another Section (Part)
+                <Plus className="w-4 h-4 text-blue-600" /> + Add Another Section (Part)
               </button>
             </div>
           )}
 
           {/* Page Footer / End of Paper mark */}
-          <div className="mt-12 text-center text-xs text-gray-500 font-serif border-t border-gray-200 pt-4">
+          <div className="mt-12 text-center text-xs text-slate-500 font-serif border-t border-slate-200 pt-4 tracking-wider select-none">
             *** END OF EXAMINATION PAPER ***
           </div>
         </div>

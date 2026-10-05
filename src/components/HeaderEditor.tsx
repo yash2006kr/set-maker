@@ -1,6 +1,6 @@
 import React from 'react';
 import type { ExamHeader } from '../types';
-import { Plus, Trash2, Calendar, Clock, Award, BookOpen } from 'lucide-react';
+import { Plus, Trash2, Calendar, Clock, Award, BookOpen, Sparkles } from 'lucide-react';
 
 interface HeaderEditorProps {
   header: ExamHeader;
@@ -12,7 +12,7 @@ interface HeaderEditorProps {
 export const HeaderEditor: React.FC<HeaderEditorProps> = ({
   header,
   onChange,
-  setCodeLabel = 'MASTER PAPER',
+  setCodeLabel = 'MASTER TEMPLATE',
   readOnly = false,
 }) => {
   const updateField = <K extends keyof ExamHeader>(key: K, value: ExamHeader[K]) => {
@@ -34,7 +34,7 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
     if (readOnly) return;
     onChange({
       ...header,
-      generalInstructions: [...header.generalInstructions, 'New examination instruction.'],
+      generalInstructions: [...header.generalInstructions, 'New examination rule or instruction.'],
     });
   };
 
@@ -44,14 +44,31 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
     onChange({ ...header, generalInstructions: newInstructions });
   };
 
+  const isMaster = setCodeLabel.toUpperCase().includes('MASTER');
+
   return (
-    <div className="border-b-2 border-gray-900 pb-5 mb-6 text-gray-900 font-serif">
-      {/* Top Set Badge */}
+    <div className="exam-header-block page-break-avoid border-b-2 border-slate-900 pb-5 mb-6 text-slate-900 font-serif">
+      {/* Top Banner Row: Confidential Mark & Set Code Badge */}
       <div className="flex justify-between items-center mb-3">
-        <span className="text-xs uppercase tracking-wider text-gray-500 font-sans font-semibold">
-          Examination Paper Template
-        </span>
-        <div className="bg-gray-900 text-white font-sans font-bold px-3 py-1 rounded text-xs tracking-wider uppercase shadow-sm">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-sans font-bold tracking-widest text-slate-500 uppercase">
+            Confidential / Official Examination
+          </span>
+          {!readOnly && (
+            <span className="no-print text-[10px] font-sans font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 flex items-center gap-1">
+              <Sparkles className="w-2.5 h-2.5" /> Live Editor
+            </span>
+          )}
+        </div>
+
+        {/* Set Badge */}
+        <div
+          className={`font-sans font-extrabold px-3 py-1 rounded text-xs tracking-wider uppercase shadow-xs transition-colors ${
+            isMaster
+              ? 'bg-slate-900 text-white'
+              : 'bg-blue-700 text-white ring-1 ring-blue-800'
+          }`}
+        >
           {setCodeLabel}
         </div>
       </div>
@@ -59,8 +76,8 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
       {/* Institution Name */}
       <div className="text-center mb-1">
         {readOnly ? (
-          <h1 className="text-xl md:text-2xl font-bold uppercase tracking-wide">
-            {header.institutionName}
+          <h1 className="text-xl md:text-2xl font-bold uppercase tracking-wide text-slate-950 font-serif">
+            {header.institutionName || 'INSTITUTION / UNIVERSITY NAME'}
           </h1>
         ) : (
           <input
@@ -68,7 +85,7 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
             value={header.institutionName}
             onChange={(e) => updateField('institutionName', e.target.value)}
             placeholder="INSTITUTION / UNIVERSITY NAME"
-            className="w-full text-center text-xl md:text-2xl font-bold uppercase tracking-wide border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none transition-colors bg-transparent"
+            className="w-full text-center text-xl md:text-2xl font-bold uppercase tracking-wide border-b border-transparent hover:border-slate-300 focus:border-blue-600 focus:bg-blue-50/20 focus:outline-none transition-all bg-transparent rounded-sm py-0.5"
           />
         )}
       </div>
@@ -76,14 +93,14 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
       {/* Department Name */}
       <div className="text-center mb-2">
         {readOnly ? (
-          <p className="text-sm italic text-gray-700">{header.departmentName}</p>
+          <p className="text-sm italic text-slate-700 font-serif">{header.departmentName}</p>
         ) : (
           <input
             type="text"
             value={header.departmentName || ''}
             onChange={(e) => updateField('departmentName', e.target.value)}
-            placeholder="Department / Faculty / School Name"
-            className="w-full text-center text-sm italic text-gray-700 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none transition-colors bg-transparent"
+            placeholder="Department / Faculty / School (e.g. Department of Computer Science)"
+            className="w-full text-center text-sm italic text-slate-700 border-b border-transparent hover:border-slate-300 focus:border-blue-600 focus:bg-blue-50/20 focus:outline-none transition-all bg-transparent rounded-sm py-0.5"
           />
         )}
       </div>
@@ -91,7 +108,7 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
       {/* Exam Title */}
       <div className="text-center mb-4">
         {readOnly ? (
-          <h2 className="text-lg md:text-xl font-bold tracking-normal uppercase underline decoration-1 underline-offset-4">
+          <h2 className="text-lg md:text-xl font-bold tracking-normal uppercase underline decoration-1 underline-offset-4 text-slate-900 font-serif">
             {header.examTitle}
           </h2>
         ) : (
@@ -100,38 +117,38 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
             value={header.examTitle}
             onChange={(e) => updateField('examTitle', e.target.value)}
             placeholder="EXAMINATION TITLE (e.g. MID-SEMESTER EXAMINATION - 2026)"
-            className="w-full text-center text-lg md:text-xl font-bold tracking-normal uppercase border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none transition-colors bg-transparent"
+            className="w-full text-center text-lg md:text-xl font-bold tracking-normal uppercase border-b border-transparent hover:border-slate-300 focus:border-blue-600 focus:bg-blue-50/20 focus:outline-none transition-all bg-transparent rounded-sm py-0.5"
           />
         )}
       </div>
 
-      {/* Exam Metadata Grid */}
-      <div className="border-t border-b border-gray-800 py-2.5 my-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+      {/* Exam Metadata Grid (Academic 4-box layout) */}
+      <div className="border-t border-b border-slate-900 py-2.5 my-3 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2.5 text-sm bg-slate-50/40 print:bg-transparent px-2.5 rounded-sm print:px-0">
         {/* Course Code & Name */}
         <div className="flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-gray-600 shrink-0 no-print" />
-          <span className="font-bold">Course:</span>
+          <BookOpen className="w-4 h-4 text-slate-500 shrink-0 no-print" />
+          <span className="font-bold text-slate-900 shrink-0">Course:</span>
           {readOnly ? (
-            <span>
+            <span className="text-slate-800 font-medium">
               {header.courseCode ? `${header.courseCode} - ` : ''}
               {header.courseName}
             </span>
           ) : (
-            <div className="flex items-center gap-1 flex-1">
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <input
                 type="text"
                 value={header.courseCode}
                 onChange={(e) => updateField('courseCode', e.target.value)}
                 placeholder="Code (CS302)"
-                className="w-24 px-1 py-0.5 border border-gray-200 rounded font-semibold text-xs focus:ring-1 focus:ring-blue-500"
+                className="w-24 px-1.5 py-0.5 border border-slate-300 rounded font-semibold text-xs focus:ring-1 focus:ring-blue-500 bg-white"
               />
-              <span className="text-gray-400">-</span>
+              <span className="text-slate-400 font-sans">-</span>
               <input
                 type="text"
                 value={header.courseName}
                 onChange={(e) => updateField('courseName', e.target.value)}
                 placeholder="Course Name"
-                className="flex-1 px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-blue-500"
+                className="flex-1 min-w-0 px-1.5 py-0.5 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 bg-white"
               />
             </div>
           )}
@@ -139,50 +156,52 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
 
         {/* Max Marks */}
         <div className="flex items-center justify-start md:justify-end gap-2">
-          <Award className="w-4 h-4 text-gray-600 shrink-0 no-print" />
-          <span className="font-bold">Maximum Marks:</span>
+          <Award className="w-4 h-4 text-slate-500 shrink-0 no-print" />
+          <span className="font-bold text-slate-900">Maximum Marks:</span>
           {readOnly ? (
-            <span className="font-bold">{header.maxMarks}</span>
+            <span className="font-bold text-slate-950 font-sans bg-slate-100 px-2 py-0.5 rounded print:bg-transparent print:p-0">
+              {header.maxMarks}
+            </span>
           ) : (
             <input
               type="number"
               value={header.maxMarks}
               onChange={(e) => updateField('maxMarks', parseInt(e.target.value) || 0)}
-              className="w-16 px-1.5 py-0.5 border border-gray-200 rounded font-bold text-center text-xs focus:ring-1 focus:ring-blue-500"
+              className="w-16 px-2 py-0.5 border border-slate-300 rounded font-bold text-center text-xs focus:ring-1 focus:ring-blue-500 bg-white"
             />
           )}
         </div>
 
         {/* Duration */}
         <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-gray-600 shrink-0 no-print" />
-          <span className="font-bold">Duration:</span>
+          <Clock className="w-4 h-4 text-slate-500 shrink-0 no-print" />
+          <span className="font-bold text-slate-900">Duration:</span>
           {readOnly ? (
-            <span>{header.duration}</span>
+            <span className="text-slate-800">{header.duration}</span>
           ) : (
             <input
               type="text"
               value={header.duration}
               onChange={(e) => updateField('duration', e.target.value)}
-              placeholder="3 Hours"
-              className="w-32 px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-blue-500"
+              placeholder="e.g. 3 Hours"
+              className="w-32 px-1.5 py-0.5 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 bg-white"
             />
           )}
         </div>
 
         {/* Date */}
         <div className="flex items-center justify-start md:justify-end gap-2">
-          <Calendar className="w-4 h-4 text-gray-600 shrink-0 no-print" />
-          <span className="font-bold">Date:</span>
+          <Calendar className="w-4 h-4 text-slate-500 shrink-0 no-print" />
+          <span className="font-bold text-slate-900">Date:</span>
           {readOnly ? (
-            <span>{header.date}</span>
+            <span className="text-slate-800">{header.date}</span>
           ) : (
             <input
               type="text"
               value={header.date}
               onChange={(e) => updateField('date', e.target.value)}
               placeholder="e.g. 14th October 2026"
-              className="w-40 px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-blue-500"
+              className="w-40 px-1.5 py-0.5 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 bg-white"
             />
           )}
         </div>
@@ -190,24 +209,24 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
 
       {/* General Instructions Section */}
       <div className="mt-3">
-        <div className="flex justify-between items-center mb-1">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 italic">
+        <div className="flex justify-between items-center mb-1.5">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 italic">
             General Instructions:
           </h3>
           {!readOnly && (
             <button
               type="button"
               onClick={addInstruction}
-              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-sans font-medium no-print transition-colors"
+              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-sans font-semibold no-print transition-colors px-2 py-0.5 rounded hover:bg-blue-50"
             >
               <Plus className="w-3 h-3" /> Add Rule
             </button>
           )}
         </div>
 
-        <ol className="list-decimal list-outside ml-5 text-xs text-gray-800 space-y-1">
+        <ol className="list-decimal list-outside ml-5 text-xs text-slate-800 space-y-1 leading-relaxed">
           {header.generalInstructions.map((instruction, idx) => (
-            <li key={idx} className="group">
+            <li key={idx} className="group/rule pl-1">
               <div className="flex items-center justify-between gap-2">
                 {readOnly ? (
                   <span>{instruction}</span>
@@ -216,14 +235,14 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
                     type="text"
                     value={instruction}
                     onChange={(e) => updateInstruction(idx, e.target.value)}
-                    className="flex-1 border-b border-transparent hover:border-gray-200 focus:border-blue-400 focus:outline-none bg-transparent py-0.5"
+                    className="flex-1 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-blue-50/20 focus:outline-none bg-transparent py-0.5 rounded-sm"
                   />
                 )}
                 {!readOnly && header.generalInstructions.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeInstruction(idx)}
-                    className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 p-0.5 no-print transition-opacity"
+                    className="opacity-0 group-hover/rule:opacity-100 text-slate-400 hover:text-red-600 p-0.5 no-print transition-all rounded"
                     title="Remove rule"
                   >
                     <Trash2 className="w-3 h-3" />

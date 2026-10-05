@@ -2,29 +2,27 @@
 
 @layer base {
   body {
-    background-color: #f3f4f6;
-    color: #111827;
-    font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: #f1f5f9;
+    color: #0f172a;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
     margin: 0;
     padding: 0;
     min-height: 100vh;
   }
 }
 
-/* Print styling for realistic A4 examination papers */
+/* Print styling for realistic A4 examination papers.
+   Setting margin: 0mm strips browser default headers (title watermark, date)
+   and footers (localhost URL, page numbers) across Chrome, Edge, Safari & Firefox. */
 @page {
-  size: A4;
-  margin: 15mm 20mm;
+  size: A4 portrait;
+  margin: 0mm;
 }
 
 @media print {
-  body {
-    background: transparent !important;
-    color: #000 !important;
-    padding: 0 !important;
-  }
-
-  .no-print {
+  /* Complete suppression of editor UI */
+  .no-print,
+  .no-print * {
     display: none !important;
   }
 
@@ -32,17 +30,35 @@
     display: block !important;
   }
 
-  .a4-page {
-    box-shadow: none !important;
-    border: none !important;
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
-    max-width: 100% !important;
-    min-height: auto !important;
+    height: auto !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-family: 'Times New Roman', Times, 'Merriweather', Georgia, serif !important;
   }
 
-  .page-break-avoid {
+  .a4-page {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 auto !important;
+    padding: 14mm 18mm 16mm 18mm !important;
+    width: 100% !important;
+    max-width: 210mm !important;
+    min-height: auto !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+  }
+
+  .page-break-avoid,
+  .question-card-item,
+  .exam-header-block,
+  .section-header-block {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
@@ -51,31 +67,52 @@
     break-after: page !important;
     page-break-after: always !important;
   }
+
+  input,
+  textarea {
+    border: none !important;
+    background: transparent !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  [contenteditable="true"]:empty:before {
+    display: none !important;
+  }
 }
 
 /* Realistic A4 Page container on Screen */
 .a4-canvas-container {
   width: 210mm;
   min-height: 297mm;
-  background: white;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.05),
+    0 10px 25px -5px rgba(15, 23, 42, 0.1),
+    0 20px 48px -10px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 3px;
   margin: 0 auto;
   padding: 20mm;
   box-sizing: border-box;
+  position: relative;
+  transition: all 0.2s ease-in-out;
 }
 
 @media (max-width: 860px) {
   .a4-canvas-container {
     width: 100%;
     min-height: auto;
-    padding: 15px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
   }
 }
 
 /* Subtle styling for rich-text inline editable fields */
 [contenteditable="true"]:empty:before {
   content: attr(data-placeholder);
-  color: #9ca3af;
+  color: #94a3b8;
   pointer-events: none;
   display: block;
 }
@@ -84,4 +121,20 @@
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Custom sleek scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

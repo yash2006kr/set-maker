@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Bold,
   Italic,
@@ -11,13 +11,17 @@ import {
   FileDown,
   FolderOpen,
   Save,
-  CheckCircle,
+  CheckCircle2,
   AlertTriangle,
   Layers,
   FileSpreadsheet,
+  Download,
+  Loader2,
+  ChevronDown,
+  Sparkles,
 } from 'lucide-react';
 import type { ExamPaper } from '../types';
-import { dsaExamPaper, physicsExamPaper } from '../data/samplePapers';
+import { dsaExamPaper, physicsExamPaper, mathsExamPaper } from '../data/samplePapers';
 
 interface RibbonToolbarProps {
   paper: ExamPaper;
@@ -31,8 +35,10 @@ interface RibbonToolbarProps {
   setSetCount: (n: number) => void;
   shuffleOptions: boolean;
   setShuffleOptions: (v: boolean) => void;
+  onDownloadPdf: () => void;
   onPrintPdf: () => void;
   onExportDocx: () => void;
+  isGeneratingPdf?: boolean;
 }
 
 export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
@@ -47,10 +53,13 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
   setSetCount,
   shuffleOptions,
   setShuffleOptions,
+  onDownloadPdf,
   onPrintPdf,
   onExportDocx,
+  isGeneratingPdf = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
 
   // Apply rich text formatting to active selection
   const executeFormat = (command: string, value: string | undefined = undefined) => {
@@ -64,18 +73,22 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
     0
   );
   const isMarksBalanced = calculatedMarks === paper.header.maxMarks;
+  const marksDifference = paper.header.maxMarks - calculatedMarks;
 
   // Presets
   const loadPreset = (preset: ExamPaper) => {
+    setTemplateMenuOpen(false);
     if (window.confirm(`Load template "${preset.title}"? Current edits will be replaced.`)) {
       setPaper(JSON.parse(JSON.stringify(preset)));
     }
   };
 
   const createBlank = () => {
+    setTemplateMenuOpen(false);
     if (window.confirm('Create a new blank examination paper?')) {
+      const now = Date.now();
       setPaper({
-        id: `exam-${Date.now()}`,
+        id: `exam-${now}`,
         title: 'New Examination Paper',
         header: {
           institutionName: 'UNIVERSITY / SCHOOL NAME',
@@ -92,20 +105,20 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
         },
         sections: [
           {
-            id: `sec-${Date.now()}`,
+            id: `sec-${now}`,
             title: 'SECTION A: Objective Questions',
             instructions: 'Answer all questions.',
             questions: [
               {
-                id: `q-${Date.now()}`,
+                id: `q-${now}`,
                 type: 'mcq',
                 stem: 'Sample multiple choice question stem.',
                 marks: 2,
                 options: [
-                  { id: '1', label: 'A', text: 'First choice', isCorrect: true },
-                  { id: '2', label: 'B', text: 'Second choice', isCorrect: false },
-                  { id: '3', label: 'C', text: 'Third choice', isCorrect: false },
-                  { id: '4', label: 'D', text: 'Fourth choice', isCorrect: false },
+                  { id: `opt-${now}-1`, label: 'A', text: 'First choice', isCorrect: true },
+                  { id: `opt-${now}-2`, label: 'B', text: 'Second choice', isCorrect: false },
+                  { id: `opt-${now}-3`, label: 'C', text: 'Third choice', isCorrect: false },
+                  { id: `opt-${now}-4`, label: 'D', text: 'Fourth choice', isCorrect: false },
                 ],
               },
             ],
@@ -137,8 +150,9 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
         } else {
           alert('Invalid exam paper format.');
         }
-      } catch (err) {
-        alert('Failed to parse JSON file.');
+      } catch (error) {
+        console.error('Failed to parse JSON file:', error);
+        alert('Failed to parse JSON file. Please ensure it is a valid SetMaker JSON export.');
       }
     };
     reader.readAsText(file);
@@ -146,62 +160,111 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-xs no-print font-sans">
-      {/* Top Banner Bar */}
-      <div className="px-4 py-2 bg-gray-900 text-white flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="font-extrabold text-sm tracking-tight text-white flex items-center gap-1.5">
-            <span className="bg-blue-600 text-white px-2 py-0.5 rounded font-black tracking-normal">SET</span>
-            MAKER
-          </span>
-          <span className="text-gray-400 border-l border-gray-700 pl-2 hidden sm:inline">
-            Web-Based Question Paper Designer & Multi-Set Studio
+    <header className="sticky top-0 z-40 bg-white border-b border-slate-200/90 shadow-xs no-print font-sans select-none">
+      {/* Top Banner Navigation Bar */}
+      <div className="px-4 py-2 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 text-xs">
+        {/* Brand identity */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-2 py-0.5 rounded font-black text-xs tracking-wider shadow-xs">
+              SET
+            </span>
+            <span className="font-extrabold text-sm tracking-tight text-white">
+              MAKER
+            </span>
+          </div>
+          <span className="text-slate-400 border-l border-slate-700 pl-3 hidden md:inline text-[11px]">
+            Academic Question Paper Designer &amp; Multi-Set Studio
           </span>
         </div>
 
-        {/* Templates and File IO */}
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400 text-[11px] hidden md:inline">Sample Templates:</span>
-          <button
-            type="button"
-            onClick={() => loadPreset(dsaExamPaper)}
-            className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-[11px] transition-colors"
-          >
-            DSA Mid-Term
-          </button>
-          <button
-            type="button"
-            onClick={() => loadPreset(physicsExamPaper)}
-            className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-[11px] transition-colors"
-          >
-            Physics Exam
-          </button>
-          <button
-            type="button"
-            onClick={createBlank}
-            className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-[11px] transition-colors"
-          >
-            Blank Paper
-          </button>
+        {/* Paper title preview / badge */}
+        <div className="hidden lg:flex items-center gap-2 text-[11px] text-slate-300 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700/60">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="font-semibold text-white">
+            {paper.header.courseCode || 'Exam'}:
+          </span>
+          <span className="truncate max-w-[240px]">
+            {paper.header.examTitle || 'Mid-Term Paper'}
+          </span>
+        </div>
 
-          <div className="h-4 w-px bg-gray-700 mx-1" />
+        {/* Templates Dropdown and File Actions */}
+        <div className="flex items-center gap-2">
+          {/* Templates Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setTemplateMenuOpen(!templateMenuOpen)}
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors border border-slate-700"
+            >
+              <Sparkles className="w-3 h-3 text-blue-400" />
+              <span>Templates</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+
+            {templateMenuOpen && (
+              <div
+                className="absolute right-0 mt-1 w-52 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-slate-800"
+                onMouseLeave={() => setTemplateMenuOpen(false)}
+              >
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Pre-built Academic Papers
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadPreset(dsaExamPaper)}
+                  className="w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50 flex flex-col text-slate-700 hover:text-blue-600 transition-colors"
+                >
+                  <span className="font-semibold">CS302: Data Structures</span>
+                  <span className="text-[10px] text-slate-400">100 Marks &bull; 11 Questions &bull; 3 Parts</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => loadPreset(physicsExamPaper)}
+                  className="w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50 flex flex-col text-slate-700 hover:text-blue-600 transition-colors"
+                >
+                  <span className="font-semibold">PHY-12: Physics Exam</span>
+                  <span className="text-[10px] text-slate-400">70 Marks &bull; 9 Questions &bull; Theory</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => loadPreset(mathsExamPaper)}
+                  className="w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50 flex flex-col text-slate-700 hover:text-blue-600 transition-colors"
+                >
+                  <span className="font-semibold">MAT201: Engineering Math</span>
+                  <span className="text-[10px] text-slate-400">50 Marks &bull; 6 Questions &bull; Algebra</span>
+                </button>
+                <div className="border-t border-slate-100 my-1" />
+                <button
+                  type="button"
+                  onClick={createBlank}
+                  className="w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50 text-slate-700 hover:text-blue-600 font-semibold transition-colors"
+                >
+                  + Create Blank Paper
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="h-4 w-px bg-slate-700 mx-0.5" />
 
           {/* Import/Export JSON */}
           <button
             type="button"
             onClick={handleExportJson}
-            className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-[11px] flex items-center gap-1 transition-colors"
+            className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 transition-colors border border-slate-700"
             title="Save Paper as JSON file"
           >
-            <Save className="w-3 h-3" /> Save JSON
+            <Save className="w-3 h-3 text-slate-400" /> Save JSON
           </button>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-[11px] flex items-center gap-1 transition-colors"
+            className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 transition-colors border border-slate-700"
             title="Load Paper from JSON file"
           >
-            <FolderOpen className="w-3 h-3" /> Load JSON
+            <FolderOpen className="w-3 h-3 text-slate-400" /> Load JSON
           </button>
           <input
             ref={fileInputRef}
@@ -213,111 +276,114 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
         </div>
       </div>
 
-      {/* Main Ribbon / Action Toolbar */}
-      <div className="px-4 py-2.5 bg-gray-50 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200">
+      {/* Main Studio Ribbon Toolbar */}
+      <div className="px-4 py-2.5 bg-slate-50/90 backdrop-blur-xs flex flex-wrap items-center justify-between gap-3 border-b border-slate-200">
         {/* Left: Text Formatting Controls */}
-        <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-gray-200 shadow-2xs">
+        <div className="flex items-center gap-0.5 bg-white p-1 rounded-lg border border-slate-200 shadow-2xs">
           <button
             type="button"
             onClick={() => executeFormat('bold')}
-            className="p-1.5 text-gray-700 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors"
+            className="p-1.5 text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
             title="Bold (Ctrl+B)"
           >
-            <Bold className="w-4 h-4" />
+            <Bold className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
             onClick={() => executeFormat('italic')}
-            className="p-1.5 text-gray-700 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors"
+            className="p-1.5 text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
             title="Italic (Ctrl+I)"
           >
-            <Italic className="w-4 h-4" />
+            <Italic className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
             onClick={() => executeFormat('underline')}
-            className="p-1.5 text-gray-700 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors"
+            className="p-1.5 text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
             title="Underline (Ctrl+U)"
           >
-            <Underline className="w-4 h-4" />
+            <Underline className="w-3.5 h-3.5" />
           </button>
-          <div className="h-4 w-px bg-gray-200 mx-0.5" />
+          <div className="h-4 w-px bg-slate-200 mx-0.5" />
           <button
             type="button"
             onClick={() => executeFormat('superscript')}
-            className="p-1.5 text-gray-700 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors"
+            className="p-1.5 text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
             title="Superscript"
           >
-            <Superscript className="w-4 h-4" />
+            <Superscript className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
             onClick={() => executeFormat('subscript')}
-            className="p-1.5 text-gray-700 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors"
+            className="p-1.5 text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
             title="Subscript"
           >
-            <Subscript className="w-4 h-4" />
+            <Subscript className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Center: Insert Section & Question */}
+        {/* Center-Left: Insert Section & Question */}
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={onAddSection}
-            className="px-2.5 py-1.5 bg-white hover:bg-gray-100 border border-gray-300 text-gray-800 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+            className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs hover:shadow-xs transition-all"
           >
             <Layers className="w-3.5 h-3.5 text-blue-600" /> + Add Section
           </button>
           <button
             type="button"
             onClick={() => onAddQuestion('mcq')}
-            className="px-2.5 py-1.5 bg-white hover:bg-gray-100 border border-gray-300 text-gray-800 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+            className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs hover:shadow-xs transition-all"
           >
             <Plus className="w-3.5 h-3.5 text-emerald-600" /> + Add MCQ
           </button>
           <button
             type="button"
             onClick={() => onAddQuestion('short_answer')}
-            className="px-2.5 py-1.5 bg-white hover:bg-gray-100 border border-gray-300 text-gray-800 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition-colors"
+            className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs hover:shadow-xs transition-all"
           >
             <Plus className="w-3.5 h-3.5 text-indigo-600" /> + Add Question
           </button>
         </div>
 
-        {/* Audit Stats: Marks & Questions balance */}
-        <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-gray-200 text-xs">
-          <span className="text-gray-500 font-medium">
-            <span className="font-bold text-gray-900">{totalQuestions}</span> Questions
+        {/* Center-Right: Audit Stats: Marks & Questions balance */}
+        <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-slate-200 text-xs shadow-2xs">
+          <span className="text-slate-500 font-medium">
+            <span className="font-bold text-slate-900 font-mono">{totalQuestions}</span> Questions
           </span>
-          <span className="text-gray-300">|</span>
+          <span className="text-slate-300">|</span>
           <div className="flex items-center gap-1">
             {isMarksBalanced ? (
-              <span className="flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">
-                <CheckCircle className="w-3.5 h-3.5" />
+              <span className="flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 {calculatedMarks} / {paper.header.maxMarks} Marks
               </span>
             ) : (
               <span
-                className="flex items-center gap-1 text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded"
+                className="flex items-center gap-1 text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200"
                 title={`Calculated marks (${calculatedMarks}) do not match Max Marks (${paper.header.maxMarks})`}
               >
-                <AlertTriangle className="w-3.5 h-3.5" />
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
                 {calculatedMarks} / {paper.header.maxMarks} Marks
+                <span className="text-[10px] text-amber-600 font-normal">
+                  ({marksDifference > 0 ? `${marksDifference} left` : `${Math.abs(marksDifference)} over`})
+                </span>
               </span>
             )}
           </div>
         </div>
 
-        {/* Right: Shuffling & Export Actions */}
+        {/* Right: Shuffling Engine & Multi-Format Export */}
         <div className="flex items-center gap-2">
-          {/* Sets count select */}
-          <div className="flex items-center gap-1 text-xs text-gray-700 bg-white border border-gray-300 rounded-lg px-2 py-1">
-            <span className="font-medium text-gray-500">Sets:</span>
+          {/* Sets Count */}
+          <div className="flex items-center gap-1 text-xs text-slate-700 bg-white border border-slate-300 rounded-lg px-2 py-1 shadow-2xs">
+            <span className="font-medium text-slate-500">Sets:</span>
             <select
               value={setCount}
               onChange={(e) => setSetCount(parseInt(e.target.value) || 4)}
-              className="bg-transparent font-bold text-gray-900 focus:outline-none cursor-pointer"
+              className="bg-transparent font-bold text-slate-900 focus:outline-none cursor-pointer"
             >
               <option value="2">2 Sets (A, B)</option>
               <option value="3">3 Sets (A, B, C)</option>
@@ -328,7 +394,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
           </div>
 
           {/* Shuffle Options Checkbox */}
-          <label className="flex items-center gap-1 text-xs text-gray-700 cursor-pointer select-none bg-white border border-gray-300 rounded-lg px-2 py-1">
+          <label className="flex items-center gap-1 text-xs text-slate-700 cursor-pointer select-none bg-white border border-slate-300 rounded-lg px-2 py-1 shadow-2xs">
             <input
               type="checkbox"
               checked={shuffleOptions}
@@ -342,7 +408,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
           <button
             type="button"
             onClick={onGenerateSets}
-            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+            className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-98"
           >
             <Shuffle className="w-3.5 h-3.5" /> Generate Sets
           </button>
@@ -352,28 +418,47 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
             <button
               type="button"
               onClick={onOpenShuffleMatrix}
-              className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
+              className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
               title="Open Cross-Set Shuffle Matrix & Answer Keys"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" /> Matrix & Keys
+              <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600" /> Matrix &amp; Keys
             </button>
           )}
 
-          {/* Print/PDF */}
+          {/* Clean PDF Download Button */}
+          <button
+            type="button"
+            onClick={onDownloadPdf}
+            disabled={isGeneratingPdf}
+            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-98"
+            title="Download clean A4 PDF directly (Zero watermarks, Zero localhost URL)"
+          >
+            {isGeneratingPdf ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...
+              </>
+            ) : (
+              <>
+                <Download className="w-3.5 h-3.5" /> Download PDF
+              </>
+            )}
+          </button>
+
+          {/* Clean Print / Save as PDF */}
           <button
             type="button"
             onClick={onPrintPdf}
-            className="px-2.5 py-1.5 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition-colors"
-            title="Print or Save as PDF"
+            className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs hover:shadow-xs transition-all"
+            title="Print or Browser Save as PDF (Stripped headers & footers)"
           >
-            <Printer className="w-3.5 h-3.5" /> Print/PDF
+            <Printer className="w-3.5 h-3.5 text-slate-500" /> Print
           </button>
 
           {/* Export DOCX */}
           <button
             type="button"
             onClick={onExportDocx}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-98"
             title="Download Word .docx document"
           >
             <FileDown className="w-3.5 h-3.5" /> Word (.docx)

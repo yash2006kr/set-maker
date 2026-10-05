@@ -1,7 +1,7 @@
 import React from 'react';
 import type { ExamSection, Question, QuestionType } from '../types';
 import { QuestionCard } from './QuestionCard';
-import { Plus, Trash2, ArrowUp, ArrowDown, FolderPlus } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, BookOpen } from 'lucide-react';
 
 interface SectionBlockProps {
   section: ExamSection;
@@ -15,6 +15,10 @@ interface SectionBlockProps {
   isLastSection?: boolean;
   readOnly?: boolean;
   highlightCorrect?: boolean;
+}
+
+function generateSuffix(index: number): string {
+  return `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
 export const SectionBlock: React.FC<SectionBlockProps> = ({
@@ -58,13 +62,14 @@ export const SectionBlock: React.FC<SectionBlockProps> = ({
   const handleDuplicateQuestion = (qIndex: number) => {
     if (readOnly) return;
     const target = section.questions[qIndex];
+    const uniqueSuffix = generateSuffix(qIndex);
     const duplicated: Question = {
       ...target,
-      id: `q-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      id: `q-${uniqueSuffix}`,
       options: target.options
-        ? target.options.map((o) => ({
+        ? target.options.map((o, oIdx) => ({
             ...o,
-            id: `opt-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            id: `opt-${uniqueSuffix}-${oIdx}`,
           }))
         : undefined,
     };
@@ -86,8 +91,9 @@ export const SectionBlock: React.FC<SectionBlockProps> = ({
 
   const handleAddQuestion = (type: QuestionType) => {
     if (readOnly) return;
+    const uniqueSuffix = generateSuffix(section.questions.length);
     const newQ: Question = {
-      id: `q-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      id: `q-${uniqueSuffix}`,
       type,
       stem:
         type === 'mcq'
@@ -97,10 +103,10 @@ export const SectionBlock: React.FC<SectionBlockProps> = ({
       options:
         type === 'mcq'
           ? [
-              { id: `opt-1-${Date.now()}`, label: 'A', text: 'Option A statement', isCorrect: true },
-              { id: `opt-2-${Date.now()}`, label: 'B', text: 'Option B statement', isCorrect: false },
-              { id: `opt-3-${Date.now()}`, label: 'C', text: 'Option C statement', isCorrect: false },
-              { id: `opt-4-${Date.now()}`, label: 'D', text: 'Option D statement', isCorrect: false },
+              { id: `opt-1-${uniqueSuffix}`, label: 'A', text: 'Option A statement', isCorrect: true },
+              { id: `opt-2-${uniqueSuffix}`, label: 'B', text: 'Option B statement', isCorrect: false },
+              { id: `opt-3-${uniqueSuffix}`, label: 'C', text: 'Option C statement', isCorrect: false },
+              { id: `opt-4-${uniqueSuffix}`, label: 'D', text: 'Option D statement', isCorrect: false },
             ]
           : undefined,
     };
@@ -108,26 +114,26 @@ export const SectionBlock: React.FC<SectionBlockProps> = ({
   };
 
   return (
-    <div className="mb-8 border border-gray-200/80 rounded-xl p-4 bg-gray-50/50 hover:bg-gray-50/80 transition-colors">
-      {/* Section Header Controls */}
-      <div className="flex items-center justify-between pb-2 mb-3 border-b border-gray-300 no-print font-sans">
+    <div className="mb-8 border border-slate-200/90 rounded-xl p-3.5 md:p-4 bg-slate-50/40 hover:bg-slate-50/70 transition-colors print:border-none print:bg-transparent print:p-0 print:m-0 print:mb-6 section-header-block">
+      {/* Section Header Controls (Hidden in Print) */}
+      <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-200 no-print font-sans">
         <div className="flex items-center gap-2">
-          <span className="text-xs uppercase font-bold tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-            Section Container
+          <span className="text-xs uppercase font-extrabold tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+            <BookOpen className="w-3 h-3" /> Section
           </span>
-          <span className="text-xs text-gray-500 font-medium">
-            {section.questions.length} Questions | Total: {totalSectionMarks} Marks
+          <span className="text-xs text-slate-500 font-medium">
+            {section.questions.length} Questions &bull; Total: <span className="font-bold text-slate-800">{totalSectionMarks} Marks</span>
           </span>
         </div>
 
         {!readOnly && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5">
             {onMoveSectionUp && (
               <button
                 type="button"
                 onClick={onMoveSectionUp}
                 disabled={isFirstSection}
-                className="p-1 text-gray-500 hover:text-gray-800 disabled:opacity-30 rounded hover:bg-gray-200"
+                className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-20 rounded hover:bg-slate-100 transition-colors"
                 title="Move Section Up"
               >
                 <ArrowUp className="w-3.5 h-3.5" />
@@ -138,7 +144,7 @@ export const SectionBlock: React.FC<SectionBlockProps> = ({
                 type="button"
                 onClick={onMoveSectionDown}
                 disabled={isLastSection}
-                className="p-1 text-gray-500 hover:text-gray-800 disabled:opacity-30 rounded hover:bg-gray-200"
+                className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-20 rounded hover:bg-slate-100 transition-colors"
                 title="Move Section Down"
               >
                 <ArrowDown className="w-3.5 h-3.5" />
@@ -147,7 +153,7 @@ export const SectionBlock: React.FC<SectionBlockProps> = ({
             <button
               type="button"
               onClick={onDeleteSection}
-              className="p-1 text-gray-500 hover:text-red-600 rounded hover:bg-red-50 ml-1"
+              className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors ml-0.5"
               title="Delete Section"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -157,9 +163,9 @@ export const SectionBlock: React.FC<SectionBlockProps> = ({
       </div>
 
       {/* Printable Section Title & Instructions */}
-      <div className="text-center my-3 font-serif">
+      <div className="text-center my-3 font-serif page-break-avoid">
         {readOnly ? (
-          <h3 className="text-base md:text-lg font-bold uppercase tracking-wide underline decoration-1 underline-offset-4">
+          <h3 className="text-base md:text-lg font-bold uppercase tracking-wide underline decoration-1 underline-offset-4 text-slate-950 font-serif">
             {section.title}
           </h3>
         ) : (
@@ -168,14 +174,14 @@ export const SectionBlock: React.FC<SectionBlockProps> = ({
             value={section.title}
             onChange={(e) => updateTitle(e.target.value)}
             placeholder="SECTION TITLE (e.g. PART - A: OBJECTIVE QUESTIONS)"
-            className="w-full text-center text-base md:text-lg font-bold uppercase tracking-wide border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent"
+            className="w-full text-center text-base md:text-lg font-bold uppercase tracking-wide border-b border-transparent hover:border-slate-300 focus:border-blue-600 focus:bg-blue-50/20 focus:outline-none bg-transparent rounded-sm py-0.5"
           />
         )}
 
-        {/* Instructions */}
+        {/* Section Instructions */}
         {readOnly ? (
           section.instructions && (
-            <p className="text-xs md:text-sm italic text-gray-700 mt-1">
+            <p className="text-xs md:text-sm italic text-slate-700 mt-1 font-serif">
               ({section.instructions})
             </p>
           )
@@ -185,13 +191,13 @@ export const SectionBlock: React.FC<SectionBlockProps> = ({
             value={section.instructions}
             onChange={(e) => updateInstructions(e.target.value)}
             placeholder="Section instructions (e.g. Answer all questions. Each question carries 2 marks.)"
-            className="w-full text-center text-xs md:text-sm italic text-gray-700 mt-1 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent"
+            className="w-full text-center text-xs md:text-sm italic text-slate-700 mt-1 border-b border-transparent hover:border-slate-300 focus:border-blue-600 focus:bg-blue-50/20 focus:outline-none bg-transparent rounded-sm py-0.5"
           />
         )}
       </div>
 
       {/* Question Cards inside this Section */}
-      <div className="space-y-1 mt-4">
+      <div className="space-y-1.5 mt-4">
         {section.questions.map((question, qIdx) => (
           <QuestionCard
             key={question.id}
@@ -210,7 +216,7 @@ export const SectionBlock: React.FC<SectionBlockProps> = ({
         ))}
 
         {section.questions.length === 0 && (
-          <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-xs font-sans">
+          <div className="text-center py-6 border-2 border-dashed border-slate-300 rounded-lg text-slate-400 text-xs font-sans no-print">
             No questions in this section yet. Add a question below.
           </div>
         )}
@@ -218,27 +224,27 @@ export const SectionBlock: React.FC<SectionBlockProps> = ({
 
       {/* Add Question Controls at Bottom of Section */}
       {!readOnly && (
-        <div className="mt-4 pt-3 border-t border-gray-200/80 flex flex-wrap items-center justify-center gap-2 no-print font-sans">
+        <div className="mt-4 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-center gap-2 no-print font-sans">
           <button
             type="button"
             onClick={() => handleAddQuestion('mcq')}
-            className="px-3 py-1.5 bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors"
+            className="px-3 py-1.5 bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition-all"
           >
-            <Plus className="w-3.5 h-3.5" /> Add MCQ
+            <Plus className="w-3.5 h-3.5" /> + Add MCQ
           </button>
           <button
             type="button"
             onClick={() => handleAddQuestion('short_answer')}
-            className="px-3 py-1.5 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors"
+            className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition-all"
           >
-            <Plus className="w-3.5 h-3.5" /> Add Short Answer
+            <Plus className="w-3.5 h-3.5" /> + Add Short Answer
           </button>
           <button
             type="button"
             onClick={() => handleAddQuestion('long_answer')}
-            className="px-3 py-1.5 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors"
+            className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition-all"
           >
-            <FolderPlus className="w-3.5 h-3.5" /> Add Long Problem
+            <Plus className="w-3.5 h-3.5" /> + Add Long Problem
           </button>
         </div>
       )}
